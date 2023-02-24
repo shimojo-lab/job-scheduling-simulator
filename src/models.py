@@ -107,3 +107,16 @@ class JobScheduler:
         print("\n---jobs start time (pred)---")
         for job in self.job_data:
             print("Job %d: %s" % (job.id, formatted_time(job.start_time_pred)))
+
+        # Compute mean squared error of sched, pred for act
+        mse_sched = 0
+        mse_pred = 0
+        for job in self.job_data:
+            mse_sched += (job.start_time_sched - job.start_time_act) ** 2
+            mse_pred += (job.start_time_pred - job.start_time_act) ** 2
+        mse_sched /= len(self.job_data)
+        mse_pred /= len(self.job_data)
+        print("\n---MSE---")
+        print("sched: %f" % mse_sched)
+        print("pred: %f" % mse_pred)
+        
