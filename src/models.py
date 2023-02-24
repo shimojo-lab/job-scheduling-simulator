@@ -5,13 +5,15 @@ from utils import formatted_time
 
 
 class Job:
-    def __init__(self, id, node, req_sec, act_sec):
+    def __init__(self, id, node, req_sec, act_sec, pred_sec):
         self.id = id
         self.node = node
         self.req_sec = req_sec
         self.act_sec = act_sec
+        self.pred_sec = pred_sec
         self.start_time_act = 0
         self.start_time_sched = 0
+        self.start_time_pred = 0
 
 
 class SchedTimeType(Enum):
@@ -32,7 +34,8 @@ class JobScheduler:
         self.nodes = [Node() for _ in range(nodes_count)]
         self.time = 0
 
-    def reset_nodes(self):
+    def reset(self):
+        self.time = 0
         self.nodes = [Node() for _ in range(len(self.nodes))]
 
     def run(self):
@@ -40,6 +43,8 @@ class JobScheduler:
         self.schedule(SchedTimeType.ACT)
         # スケジュールされたジョブの開始時間を計算
         self.schedule(SchedTimeType.SCHED)
+        # 予測されたジョブの開始時間を計算
+        self.schedule(SchedTimeType.PRED)
 
     def schedule(self, sched_time_type: SchedTimeType):
         for job in self.job_data:
@@ -50,7 +55,7 @@ class JobScheduler:
                 else:
                     self.time += 1
                     self.update_nodes()
-        self.reset_nodes()
+        self.reset()
 
     def check_nodes(self, nodes_needed):
         avail_nodes_count = 0
@@ -63,14 +68,19 @@ class JobScheduler:
         node_indices = self.get_avail_node_index(job.node)
         for node_index in node_indices:
             self.nodes[node_index].avail = False
-            lapse_sec = job.act_sec
-            if sched_time == SchedTimeType.SCHED:
+            if sched_time == SchedTimeType.ACT:
+                lapse_sec = job.act_sec
+            elif sched_time == SchedTimeType.SCHED:
                 lapse_sec = job.req_sec
+            elif sched_time == SchedTimeType.PRED:
+                lapse_sec = job.pred_sec
             self.nodes[node_index].time_to_be_avail = self.time + lapse_sec
         if sched_time == SchedTimeType.ACT:
             job.start_time_act = self.time
         elif sched_time == SchedTimeType.SCHED:
             job.start_time_sched = self.time
+        elif sched_time == SchedTimeType.PRED:
+            job.start_time_pred = self.time
 
     # 利用可能なノードのインデックスを取得する
     def get_avail_node_index(self, nodes_needed):
@@ -93,3 +103,7 @@ class JobScheduler:
         print("\n---jobs start time (sched)---")
         for job in self.job_data:
             print("Job %d: %s" % (job.id, formatted_time(job.start_time_sched)))
+
+        print("\n---jobs start time (pred)---")
+        for job in self.job_data:
+            print("Job %d: %s" % (job.id, formatted_time(job.start_time_pred)))
