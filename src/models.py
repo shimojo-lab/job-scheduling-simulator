@@ -1,4 +1,5 @@
-import numpy as np
+from typing import List
+
 from utils import formatted_time
 
 
@@ -8,7 +9,7 @@ class Job:
         self.node = node
         self.req_sec = req_sec
         self.act_sec = act_sec
-        self.start_time = 0
+        self.start_time_act = 0
 
 
 class Node:
@@ -19,7 +20,7 @@ class Node:
 
 class JobScheduler:
     def __init__(self, nodes_count, job_data):
-        self.job_data = job_data
+        self.job_data: List[Job] = job_data
         self.nodes = [Node() for _ in range(nodes_count)]
         self.time = 0
 
@@ -40,13 +41,13 @@ class JobScheduler:
                 avail_nodes_count += 1
         return avail_nodes_count >= nodes_needed
 
-    def assign_job(self, job):
+    def assign_job(self, job: Job):
         node_indices = self.get_avail_node_index(job.node)
         for node_index in node_indices:
             self.nodes[node_index].avail = False
             self.nodes[node_index].time_to_be_avail = self.time + job.act_sec
 
-        job.start_time = self.time
+        job.start_time_act = self.time
 
     # 利用可能なノードのインデックスを取得する
     def get_avail_node_index(self, nodes_needed):
@@ -64,4 +65,4 @@ class JobScheduler:
     def show_jobs_start_time(self):
         print("\n---jobs start time---")
         for job in self.job_data:
-            print("Job %d: %s" % (job.id, formatted_time(job.start_time)))
+            print("Job %d: %s" % (job.id, formatted_time(job.start_time_act)))
