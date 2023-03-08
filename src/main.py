@@ -6,14 +6,14 @@ NODE_COUNT = 10
 
 
 # ジョブデータを読み込む
-jobs:List[Job] = []
+jobs: List[Job] = []
 with open("job_data.csv") as f:
     for line in f:
         # skip header
         if line.startswith("id"):
             continue
-        id, node, req_sec, act_sec, pred_sec = map(int, line.split(","))
-        jobs.append(Job(id, node, req_sec, act_sec, pred_sec))
+        id, node, req_runtime, act_runtime, pred_runtime = map(int, line.split(","))
+        jobs.append(Job(id, node, req_runtime, act_runtime, pred_runtime))
 
 # print jobs
 print("\n---jobs input---")
@@ -23,10 +23,10 @@ for job in jobs:
         "Job %d:\t %d\t %s\t %s\t %s\t"
         % (
             job.id,
-            job.node,
-            formatted_time(job.req_sec),
-            formatted_time(job.act_sec),
-            formatted_time(job.pred_sec),
+            job.node_amount,
+            formatted_time(job.req_runtime),
+            formatted_time(job.act_runtime),
+            formatted_time(job.pred_runtime),
         )
     )
 

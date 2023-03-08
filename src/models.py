@@ -5,12 +5,12 @@ from utils import formatted_time
 
 
 class Job:
-    def __init__(self, id, node, req_sec, act_sec, pred_sec):
+    def __init__(self, id, node_amount, req_runtime, act_runtime, pred_runtime):
         self.id = id
-        self.node = node
-        self.req_sec = req_sec
-        self.act_sec = act_sec
-        self.pred_sec = pred_sec
+        self.node_amount = node_amount
+        self.req_runtime = req_runtime
+        self.act_runtime = act_runtime
+        self.pred_runtime = pred_runtime
         self.start_time_act = 0
         self.start_time_sched = 0
         self.start_time_pred = 0
@@ -31,7 +31,7 @@ class Node:
 class JobScheduler:
     def __init__(self, nodes_count, job_data):
         self.job_data: List[Job] = job_data
-        self.nodes = [Node() for _ in range(nodes_count)]
+        self.nodes: List[Node] = [Node() for _ in range(nodes_count)]
         self.time = 0
 
     def reset(self):
@@ -49,7 +49,7 @@ class JobScheduler:
     def schedule(self, sched_time_type: SchedTimeType):
         for job in self.job_data:
             while True:
-                if self.check_nodes(job.node):
+                if self.check_nodes(job.node_amount):
                     self.assign_job(job, sched_time_type)
                     break
                 else:
@@ -65,16 +65,16 @@ class JobScheduler:
         return avail_nodes_count >= nodes_needed
 
     def assign_job(self, job: Job, sched_time: SchedTimeType):
-        node_indices = self.get_avail_node_index(job.node)
+        node_indices = self.get_avail_node_index(job.node_amount)
         for node_index in node_indices:
             self.nodes[node_index].avail = False
             if sched_time == SchedTimeType.ACT:
-                lapse_sec = job.act_sec
+                lapse_runtime = job.act_runtime
             elif sched_time == SchedTimeType.SCHED:
-                lapse_sec = job.req_sec
+                lapse_runtime = job.req_runtime
             elif sched_time == SchedTimeType.PRED:
-                lapse_sec = job.pred_sec
-            self.nodes[node_index].time_to_be_avail = self.time + lapse_sec
+                lapse_runtime = job.pred_runtime
+            self.nodes[node_index].time_to_be_avail = self.time + lapse_runtime
         if sched_time == SchedTimeType.ACT:
             job.start_time_act = self.time
         elif sched_time == SchedTimeType.SCHED:
@@ -119,4 +119,3 @@ class JobScheduler:
         print("\n---MSE---")
         print("sched: %f" % mse_sched)
         print("pred: %f" % mse_pred)
-        
