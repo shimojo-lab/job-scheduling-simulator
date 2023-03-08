@@ -50,6 +50,7 @@ class JobScheduler:
         for job in self.job_data:
             while True:
                 if self.check_nodes(job.node_amount):
+                    print("assign job %d" % job.id)
                     self.assign_job(job, sched_time_type)
                     break
                 else:

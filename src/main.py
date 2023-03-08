@@ -2,18 +2,21 @@ from typing import List
 from models import Job, JobScheduler
 from utils import formatted_time
 
-NODE_COUNT = 10
+SYSTEM_NODE_AMOUNT = 1400
+FILENAME = "202107-all_users-pred_rfall"
 
 
 # ジョブデータを読み込む
 jobs: List[Job] = []
-with open("job_data.csv") as f:
+with open(f"runtime_estimated_data/{FILENAME}.csv") as f:
     for line in f:
         # skip header
         if line.startswith("id"):
             continue
-        id, node, req_runtime, act_runtime, pred_runtime = map(int, line.split(","))
-        jobs.append(Job(id, node, req_runtime, act_runtime, pred_runtime))
+        id, node_amount, req_runtime, act_runtime, pred_runtime = map(
+            int, line.split(",")
+        )
+        jobs.append(Job(id, node_amount, req_runtime, act_runtime, pred_runtime))
 
 # print jobs
 print("\n---jobs input---")
@@ -32,7 +35,7 @@ for job in jobs:
 
 
 # ジョブスケジューラを作成する
-scheduler = JobScheduler(NODE_COUNT, jobs)
+scheduler = JobScheduler(SYSTEM_NODE_AMOUNT, jobs)
 
 scheduler.run()
 scheduler.show_jobs_start_time()

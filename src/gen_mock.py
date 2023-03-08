@@ -17,16 +17,18 @@ def generate_mock_data(node_count, rows, max_req_runtime):
         req_runtime = random.randint(1, max_req_runtime)
         act_runtime = random.randint(1, req_runtime)
         pred_runtime = random.randint(1, req_runtime)
-        job = Job(i + 1, node, req_runtime, act_runtime, pred_runtime)
+        job = Job(i, node, req_runtime, act_runtime, pred_runtime)
         data.append(job)
     return data
 
 
 # CSV形式でデータを出力する関数
 def write_csv_data(data: List[Job]):
-    with open("job_data.csv", "w", newline="") as f:
+    with open("runtime_estimated_data/mocked_job_data.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["id", "node", "req_runtime", "act_runtime", "pred_runtime"])
+        writer.writerow(
+            ["id", "node_num", "req_runtime", "act_runtime", "pred_runtime"]
+        )
         for job in data:
             writer.writerow(
                 [
