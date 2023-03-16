@@ -1,7 +1,9 @@
+from functools import partial
 from typing import List
 from enum import Enum
 import copy
 import sys
+import multiprocessing
 
 from utils import formatted_time
 
@@ -55,51 +57,58 @@ class JobScheduler:
         self.schedule(SchedTimeType.ACT, self.job_data)
         print("actual job start time calculated")
         # 各ジョブについて、スケジュールされた開始時刻と予測した開始時刻を計算
-        for job in self.job_data:
-            """そのジョブの投入時刻を取得"""
-            submitted_time = job.start_time_act - job.submitted_time_offset
-            print(
-                "job %s submitted time: %s" % (job.id, formatted_time(submitted_time))
+        with multiprocessing.Pool(processes=8) as p:
+            partial_calc_start_time = partial(
+                self.calc_start_time, job_data=self.job_data
             )
-            # もし投入時刻が負の値ならスキップ
-            if submitted_time < 0:
-                job.start_time_sched = -1
-                job.start_time_pred = -1
-                print("job %s is skipped" % job.id)
-                continue
-            """その時刻の実際のジョブの状態を取得"""
-            remaining_jobs = copy.deepcopy(self.job_data)
-            # 終了したジョブを除外
-            remaining_jobs = [
-                j
-                for j in remaining_jobs
-                if j.start_time_act + j.act_runtime > submitted_time
-            ]
-            # 実行中のジョブの残り実行時間を計算
-            for rj in remaining_jobs:
-                if rj.start_time_act < submitted_time:
-                    rj.req_runtime -= submitted_time - rj.start_time_act
-                    rj.pred_runtime -= submitted_time - rj.start_time_act
-            """スケジューリングをシミュレートしジョブの開始時刻をセット"""
-            # スケジュールされたジョブの開始時間を計算
-            job.start_time_sched = self.schedule(
-                SchedTimeType.SCHED, remaining_jobs, job.id, submitted_time
-            )
-            print(
-                "scheduled job %s start time calculated: %s"
-                % (job.id, formatted_time(job.start_time_sched))
-            )
-            # PREDではジョブの残り実行時間が0以下の場合があるので、そのようなジョブを除外
-            remaining_jobs_cp = copy.deepcopy(remaining_jobs)
-            remaining_jobs = [j for j in remaining_jobs_cp if j.pred_runtime > 0]
-            # 予測されたジョブの開始時間を計算
-            job.start_time_pred = self.schedule(
-                SchedTimeType.PRED, remaining_jobs, job.id, submitted_time
-            )
-            print(
-                "predicted job %s start time calculated: %s"
-                % (job.id, formatted_time(job.start_time_pred))
-            )
+            result = p.map(partial_calc_start_time, self.job_data)
+            self.job_data = [r for r in result if r is not None]
+
+    # 各ジョブについて、スケジュールされた開始時刻と予測した開始時刻を計算
+    def calc_start_time(self, job: Job, job_data: List[Job]):
+        """そのジョブの投入時刻を取得"""
+        submitted_time = job.start_time_act - job.submitted_time_offset
+        # print("job %s submitted time: %s" % (job.id, formatted_time(submitted_time)))
+        # もし投入時刻が負の値ならスキップ
+        if submitted_time < 0:
+            job.start_time_sched = -1
+            job.start_time_pred = -1
+            print("job %s is skipped" % job.id)
+            return
+        """その時刻の実際のジョブの状態を取得"""
+        remaining_jobs = copy.deepcopy(job_data)
+        # 終了したジョブを除外
+        remaining_jobs = [
+            j
+            for j in remaining_jobs
+            if j.start_time_act + j.act_runtime > submitted_time
+        ]
+        # 実行中のジョブの残り実行時間を計算
+        for rj in remaining_jobs:
+            if rj.start_time_act < submitted_time:
+                rj.req_runtime -= submitted_time - rj.start_time_act
+                rj.pred_runtime -= submitted_time - rj.start_time_act
+        """スケジューリングをシミュレートしジョブの開始時刻をセット"""
+        # スケジュールされたジョブの開始時間を計算
+        job.start_time_sched = self.schedule(
+            SchedTimeType.SCHED, remaining_jobs, job.id, submitted_time
+        )
+        print(
+            "scheduled job %s start time calculated: %s"
+            % (job.id, formatted_time(job.start_time_sched))
+        )
+        # PREDではジョブの残り実行時間が0以下の場合があるので、そのようなジョブを除外
+        remaining_jobs_cp = copy.deepcopy(remaining_jobs)
+        remaining_jobs = [j for j in remaining_jobs_cp if j.pred_runtime > 0]
+        # 予測されたジョブの開始時間を計算
+        job.start_time_pred = self.schedule(
+            SchedTimeType.PRED, remaining_jobs, job.id, submitted_time
+        )
+        print(
+            "predicted job %s start time calculated: %s"
+            % (job.id, formatted_time(job.start_time_pred))
+        )
+        return job
 
     # スケジューリングを行い、最後に割り当てたジョブの開始時間を返す
     def schedule(
