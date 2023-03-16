@@ -2,6 +2,9 @@ from typing import List
 from models import Job, JobScheduler
 from utils import formatted_time
 
+# SYSTEM_NODE_AMOUNT = 10
+# FILENAME = "mocked_job_data"
+
 SYSTEM_NODE_AMOUNT = 1400
 FILENAME = "202107-all_users-pred_rfall"
 
@@ -13,23 +16,38 @@ with open(f"runtime_estimated_data/{FILENAME}.csv") as f:
         # skip header
         if line.startswith("id"):
             continue
-        id, node_amount, req_runtime, act_runtime, pred_runtime = map(
-            int, line.split(",")
+        (
+            id,
+            node_amount,
+            req_runtime,
+            act_runtime,
+            submitted_time_offset,
+            pred_runtime,
+        ) = map(int, line.split(","))
+        jobs.append(
+            Job(
+                id,
+                node_amount,
+                req_runtime,
+                act_runtime,
+                submitted_time_offset,
+                pred_runtime,
+            )
         )
-        jobs.append(Job(id, node_amount, req_runtime, act_runtime, pred_runtime))
 
 # print jobs
 print("\n---jobs input---")
-print("id\t node\t req_time\t act_time\t pred_time")
+print("id\tnode\treq_time\tact_time\tpred_time\tsubmit_time_offset")
 for job in jobs:
     print(
-        "Job %d:\t %d\t %s\t %s\t %s\t"
+        "Job %d:\t%d\t%s\t%s\t%s\t%s"
         % (
             job.id,
             job.node_amount,
             formatted_time(job.req_runtime),
             formatted_time(job.act_runtime),
             formatted_time(job.pred_runtime),
+            formatted_time(job.submitted_time_offset),
         )
     )
 

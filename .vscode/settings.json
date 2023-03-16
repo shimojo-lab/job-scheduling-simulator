@@ -6,5 +6,6 @@
   "python.analysis.diagnosticSeverityOverrides": {
     "reportUnusedImport": "none"
   },
-  "python.linting.mypyEnabled": true
+  "python.linting.mypyEnabled": true,
+  "cSpell.words": ["RMSE"]
 }

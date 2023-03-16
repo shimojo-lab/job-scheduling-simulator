@@ -1,5 +1,7 @@
 # convert second to hour:minute:second string
 def formatted_time(time):
+    if time < 0:
+        return "--:--:--"
     hour = time // 3600
     minute = (time % 3600) // 60
     second = time % 60
