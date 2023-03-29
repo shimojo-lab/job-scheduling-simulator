@@ -2,11 +2,11 @@ from typing import List
 from models import Job, JobScheduler
 from utils import formatted_time
 
-# SYSTEM_NODE_AMOUNT = 10
-# FILENAME = "mocked_job_data"
+SYSTEM_NODE_AMOUNT = 10
+FILENAME = "mocked_job_data"
 
-SYSTEM_NODE_AMOUNT = 1400
-FILENAME = "202107-all_users-pred_rfall"
+# SYSTEM_NODE_AMOUNT = 1400
+# FILENAME = "202107-all_users-pred_rfall"
 
 if __name__ == "__main__":
 

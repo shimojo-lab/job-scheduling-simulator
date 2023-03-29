@@ -7,6 +7,8 @@ import multiprocessing
 
 from utils import formatted_time
 
+DEBUG = 1
+
 
 class Job:
     def __init__(
@@ -94,7 +96,7 @@ class JobScheduler:
             SchedTimeType.SCHED, remaining_jobs, job.id, submitted_time
         )
         print(
-            "scheduled job %s start time calculated: %s"
+            "scheduled job %s start time calculated: %s\n"
             % (job.id, formatted_time(job.start_time_sched))
         )
         # PREDではジョブの残り実行時間が0以下の場合があるので、そのようなジョブを除外
@@ -105,7 +107,7 @@ class JobScheduler:
             SchedTimeType.PRED, remaining_jobs, job.id, submitted_time
         )
         print(
-            "predicted job %s start time calculated: %s"
+            "predicted job %s start time calculated: %s\n"
             % (job.id, formatted_time(job.start_time_pred))
         )
         return job
@@ -121,6 +123,13 @@ class JobScheduler:
         self.time = base_time
         if sched_time_type != SchedTimeType.ACT:
             job_data = copy.deepcopy(job_data)  # 元の配列を変更しないためにコピー
+        nodes_state = "" # デバッグ用。ノードの状態を保持
+        if DEBUG:
+            nodes_state = "job %s resource map" % target_job_id
+            if sched_time_type == SchedTimeType.SCHED:
+                nodes_state += " (scheduled)\n"
+            elif sched_time_type == SchedTimeType.PRED:
+                nodes_state += " (predicted)\n"
         for job in job_data:
             while True:
                 # if self.time - base_time >= 50:
@@ -144,35 +153,26 @@ class JobScheduler:
                     # )
                     # SCHEDまたはPREDの場合はtarget_jobに到達した時点で終了
                     if sched_time_type != SchedTimeType.ACT and job.id == target_job_id:
+                        if DEBUG:
+                            nodes_state += self.get_nodes_state()
+                        print(nodes_state)
                         ret = self.time
                         self.reset()
                         return ret
                     break
                 else:
+                    if DEBUG:
+                        nodes_state += self.get_nodes_state()
                     self.time += self.get_min_time_to_be_avail()
                     self.update_nodes()
+        if DEBUG:
+            print(nodes_state)
         self.reset()
         return self.time
 
     # ジョブがノードに割り当て可能かどうかをチェックする
     def check_nodes(self, nodes_needed):
         # 各ノードに割り当てられているジョブを表示
-        # print(
-        #     "check_nodes: %s : %d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d"
-        #     % (
-        #         formatted_time(self.time),
-        #         self.nodes[0].job_id,
-        #         self.nodes[1].job_id,
-        #         self.nodes[2].job_id,
-        #         self.nodes[3].job_id,
-        #         self.nodes[4].job_id,
-        #         self.nodes[5].job_id,
-        #         self.nodes[6].job_id,
-        #         self.nodes[7].job_id,
-        #         self.nodes[8].job_id,
-        #         self.nodes[9].job_id,
-        #     )
-        # )
         avail_nodes_count = 0
         for node in self.nodes:
             if node.avail:
@@ -253,3 +253,12 @@ class JobScheduler:
         print("%d jobs used for RMSE" % count)
         print("\n---RMSE---")
         print("\t\t\t%f\t%f" % (rmse_sched, rmse_pred))
+    
+    # debug用
+    # 各ノードに割り当てられているジョブを文字列で返す
+    def get_nodes_state(self):
+        nodes_state = "%s\t" % formatted_time(self.time)
+        for node in self.nodes:
+            nodes_state += "%d\t" % node.job_id
+        nodes_state += "\n"
+        return nodes_state
