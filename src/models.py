@@ -123,7 +123,7 @@ class JobScheduler:
         self.time = base_time
         if sched_time_type != SchedTimeType.ACT:
             job_data = copy.deepcopy(job_data)  # 元の配列を変更しないためにコピー
-        nodes_state = "" # デバッグ用。ノードの状態を保持
+        nodes_state = ""  # デバッグ用。ノードの状態を保持
         if DEBUG:
             nodes_state = "job %s resource map" % target_job_id
             if sched_time_type == SchedTimeType.SCHED:
@@ -155,7 +155,7 @@ class JobScheduler:
                     if sched_time_type != SchedTimeType.ACT and job.id == target_job_id:
                         if DEBUG:
                             nodes_state += self.get_nodes_state()
-                        print(nodes_state)
+                            print(nodes_state)
                         ret = self.time
                         self.reset()
                         return ret
@@ -253,7 +253,7 @@ class JobScheduler:
         print("%d jobs used for RMSE" % count)
         print("\n---RMSE---")
         print("\t\t\t%f\t%f" % (rmse_sched, rmse_pred))
-    
+
     # debug用
     # 各ノードに割り当てられているジョブを文字列で返す
     def get_nodes_state(self):
