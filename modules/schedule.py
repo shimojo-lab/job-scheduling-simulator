@@ -23,6 +23,7 @@ class Schedule:
         self.watch_job_size = watch_job_size
 
     def print_schedule(self):
+        print("*** Schedule ***")
         print(self.resource_map)
 
     def create_initial_schedule(
@@ -41,7 +42,10 @@ class Schedule:
         for job in job_queue.queue:
             # Find the earliest timestep where this job can start
             start_timestep = self._find_earliest_start_time(job)
-            if start_timestep is not None:
+            if start_timestep is None:
+                # スケジュールできないジョブが現れた時点で終了
+                break
+            else:
                 self._assign_job(job, start_timestep)
                 job.scheduled_timestep = start_timestep
                 job.is_backfilled = False
@@ -137,10 +141,6 @@ class Schedule:
             # 必要なノード数を満たすまでに利用可能なノードが見つからなかった場合の処理
             # この場合、ジョブはスケジュールされないか、異なるアプローチが必要
             print(f"Error: Unable to allocate sufficient nodes for job {job.job_index}")
-
-        # ジョブのスケジューリング情報を更新
-        job.scheduled_timestep = start_timestep
-        job.is_backfilled = False
 
     def _allocate_resources(self, resource: Resource, jobs: List[Job]):
         """リソースマップの先頭のジョブをリソースに割り当てる"""

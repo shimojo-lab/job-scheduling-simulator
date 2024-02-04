@@ -3,6 +3,7 @@ class Resource:
         self.nodes = [Node() for _ in range(node_size)]
 
     def print_nodes(self):
+        print("*** Nodes ***")
         for i, node in enumerate(self.nodes):
             print(f"Node {i}: {node.job_index} - {node.remaining_time}")
 

@@ -52,4 +52,4 @@ class Job:
         self.allocated_nodes = []
 
     def __repr__(self):
-        return f"Job {self.job_index}: {self.log_id} - {self.pred_time} - {self.real_time} - {self.node_size} - {self.scheduled_timestep} - {self.allocated_nodes}"
+        return f"Job {self.job_index}: {self.log_id} - {self.pred_time} - {self.real_time} - {self.node_size} - {self.scheduled_timestep} - {self.is_backfilled} - {self.allocated_nodes}"
