@@ -25,24 +25,37 @@ if DEBUG:
     )
 
 # Initialize the job queue, schedule, and nodes
-workload = Workload(data)
+workload = Workload(data, TIMESTEP_SECONDS)
 job_queue = JobQueue(workload.jobs)
 schedule = Schedule(
-    node_size=NODE_SIZE,
-    timestep_window=SCHEDULE_TIMESTEP_WINDOW,
-    backfill_timestep_window=BACKFILL_TIMESTEP_WINDOW,
-    timestep_seconds=TIMESTEP_SECONDS,
-    watch_job_size=WATCH_JOB_SIZE,
+    NODE_SIZE,
+    SCHEDULE_TIMESTEP_WINDOW,
+    BACKFILL_TIMESTEP_WINDOW,
+    TIMESTEP_SECONDS,
+    WATCH_JOB_SIZE,
 )
-resource = Resource(node_size=NODE_SIZE)
+resource = Resource(node_size=NODE_SIZE, timestep_seconds=TIMESTEP_SECONDS)
 
 # Create initial schedule
 schedule.create_initial_schedule(job_queue, resource, workload.jobs)
+# workload.print_jobs()
 
 # Print current state
-workload.print_jobs()
+# workload.print_jobs()
 schedule.print_schedule()
-job_queue.print_queue()
+# job_queue.print_queue()
 resource.print_nodes()
 
-# Procede 1 timestep
+# proceed 1 timestep
+schedule.proceed_timestep(resource, workload.jobs)
+
+# Print current state
+schedule.print_schedule()
+resource.print_nodes()
+# workload.print_jobs()
+
+schedule.proceed_timestep(resource, workload.jobs)
+
+schedule.print_schedule()
+
+resource.print_nodes()

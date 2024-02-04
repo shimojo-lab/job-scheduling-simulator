@@ -1,17 +1,18 @@
 import pandas as pd
+import numpy as np
 from typing import List
 
 
 class Workload:
-    def __init__(self, data: pd.DataFrame):
-        self.jobs = self.from_dataframe(data)
+    def __init__(self, data: pd.DataFrame, timestep_seconds: int):
+        self.jobs = self.from_dataframe(data, timestep_seconds)
 
     def print_jobs(self):
         print("*** Jobs ***")
         for job in self.jobs:
             print(job)
 
-    def from_dataframe(self, data) -> List["Job"]:
+    def from_dataframe(self, data, timestep_seconds) -> List["Job"]:
         jobs = []
         for idx, (index, row) in enumerate(data.iterrows()):
             log_id = row["log_id"]
@@ -27,6 +28,7 @@ class Workload:
                     pred_time=pred_time,
                     real_time=real_time,
                     node_size=node_size,
+                    timestep_length=np.ceil(pred_time / timestep_seconds).astype(int),
                 )
             )
         return jobs
@@ -40,6 +42,7 @@ class Job:
         pred_time: int,
         real_time: int,
         node_size: int,
+        timestep_length: int,
     ):
         self.job_index = job_index
         self.log_id = log_id
@@ -50,6 +53,9 @@ class Job:
         self.scheduled_timestep: int | None = None
         self.is_backfilled = False
         self.allocated_nodes = []
+        self.allocated_node_indecies = []
+        self.timestep_length = timestep_length
+        self.occupied_range = [0, 0]
 
     def __repr__(self):
-        return f"Job {self.job_index}: {self.log_id} - {self.pred_time} - {self.real_time} - {self.node_size} - {self.scheduled_timestep} - {self.is_backfilled} - {self.allocated_nodes}"
+        return f"Job {self.job_index}: {self.log_id} - {self.pred_time} - {self.real_time} - {self.node_size} - {self.scheduled_timestep} - {self.is_backfilled} - {self.allocated_node_indecies} - {self.occupied_range}"

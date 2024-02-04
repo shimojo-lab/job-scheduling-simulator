@@ -1,7 +1,7 @@
 from typing import List
 import numpy as np
 from modules.job_queue import JobQueue
-from modules.resource import Resource
+from modules.resource import Resource, NodeState
 from modules.job import Job
 
 
@@ -21,6 +21,7 @@ class Schedule:
         self.timestep_seconds = timestep_seconds
         self.resource_map = np.full((node_size, timestep_window), -1)
         self.watch_job_size = watch_job_size
+        self.jobs_in_schedule = []
 
     def print_schedule(self):
         print("*** Schedule ***")
@@ -30,13 +31,59 @@ class Schedule:
         self, job_queue: JobQueue, resource: Resource, jobs: List[Job]
     ):
         # FCFS scheduling
-        self._schedule_fcfs(job_queue)
+        self._schedule_fcfs(job_queue, resource)
         # Backfill scheduling
-        self._backfill(job_queue)
+        self._backfill(job_queue, resource)
         # Allocate resources
         self._allocate_resources(resource, jobs)
 
-    def _schedule_fcfs(self, job_queue):
+    def proceed_timestep(self, resource: Resource, jobs: List[Job]):
+        """タイムステップを1進め、実行中のジョブの状態を更新する"""
+        # 現在のタイムステップを1つ進める
+        self.timestep += 1
+
+        resource.proceed_timestep()
+        completed_jobs = resource.get_completed_jobs()
+        running_jobs = resource.get_running_jobs()
+
+        # 完了したジョブをリソースマップから削除
+        for job in completed_jobs:
+            self.resource_map[self.resource_map == job.job_index] = -1
+            self.jobs_in_schedule.remove(job)
+
+        # 実行中かつリソースマップ上で残り時間のあるジョブについて、残り時間をリソースマップ上で更新
+        for job in running_jobs:
+            scheduled_remaining_timesstep = job.allocated_nodes[
+                0
+            ].scheduled_remaining_timesstep
+            self.resource_map[
+                job.allocated_node_indecies, scheduled_remaining_timesstep
+            ] = -1
+            job.occupied_range[1] -= 1
+
+        # jobs_in_scheduleにをjob.occupied_range[0]が小さい順に並び替え
+        self.jobs_in_schedule.sort(key=lambda x: x.occupied_range[0])
+
+        # リソースマップ上で待機しているジョブについて、前詰めスケジューリングを行う
+        for job in self.jobs_in_schedule:
+            start, end = job.occupied_range
+            if start == 0:
+                continue
+            self.resource_map[job.allocated_node_indecies, start:end] = -1
+            while (
+                all(self.resource_map[job.allocated_node_indecies, start - 1] == -1)
+                and start > 0
+            ):
+                start -= 1
+            end = start + job.timestep_length
+
+            self.resource_map[job.allocated_node_indecies, start:end] = job.job_index
+            job.occupied_range = [start, end]
+
+        # アイドル中のノードについて、リソースマップ上の先頭のジョブを割り当てる
+        self._allocate_resources(resource, jobs)
+
+    def _schedule_fcfs(self, job_queue, resource):
         """Implement FCFS scheduling."""
         jobs_to_remove = []
         for job in job_queue.queue:
@@ -46,16 +93,21 @@ class Schedule:
                 # スケジュールできないジョブが現れた時点で終了
                 break
             else:
-                self._assign_job(job, start_timestep)
+                self._assign_job(job, start_timestep, resource)
                 job.scheduled_timestep = start_timestep
                 job.is_backfilled = False
+                job.occupied_range = [
+                    start_timestep,
+                    start_timestep + job.timestep_length,
+                ]
                 # keep track of jobs to remove from the queue
                 jobs_to_remove.append(job)
+                self.jobs_in_schedule.append(job)
         # Remove scheduled jobs from the queue
         for job in jobs_to_remove:
             job_queue.queue.remove(job)
 
-    def _backfill(self, job_queue: JobQueue):
+    def _backfill(self, job_queue: JobQueue, resource: Resource):
         """Implement backfill scheduling."""
         # FCFSスケジューリングで割り当てられなかったジョブを探す
         for job in list(job_queue.queue)[: self.watch_job_size]:
@@ -64,9 +116,11 @@ class Schedule:
                 # このタイムステップでジョブが実行可能かどうかを確認
                 if self._can_fit_job_in_timeslot(job, t):
                     # ジョブをスケジュールに割り当てる
-                    self._assign_job(job, t)
+                    self._assign_job(job, t, resource)
                     job.scheduled_timestep = t
                     job.is_backfilled = True
+                    job.occupied_range = [t, t + job.timestep_length]
+                    self.jobs_in_schedule.append(job)
                     # スケジュールされたジョブをキューから削除
                     job_queue.queue.remove(job)
                     break  # このジョブの処理を終了
@@ -115,7 +169,7 @@ class Schedule:
 
         return None  # 適切な開始時間が見つからない場合
 
-    def _assign_job(self, job, start_timestep):
+    def _assign_job(self, job, start_timestep, resource: Resource):
         """ジョブをスケジュールに割り当てる"""
         # ジョブのpred_timeをタイムステップに変換（秒をタイムステップに変換）
         job_pred_timesteps = np.ceil(job.pred_time / self.timestep_seconds).astype(int)
@@ -132,10 +186,11 @@ class Schedule:
                 self.resource_map[
                     node_index, start_timestep : start_timestep + job_pred_timesteps
                 ] = job.job_index
-                job.allocated_nodes.append(node_index)
+                job.allocated_node_indecies.append(node_index)
+                job.allocated_nodes.append(resource.nodes[node_index])
 
                 # 必要なノード数が確保できたかチェック
-                if len(job.allocated_nodes) >= job.node_size:
+                if len(job.allocated_node_indecies) >= job.node_size:
                     break
         else:
             # 必要なノード数を満たすまでに利用可能なノードが見つからなかった場合の処理
@@ -146,7 +201,8 @@ class Schedule:
         """リソースマップの先頭のジョブをリソースに割り当てる"""
         for node_index, node in enumerate(resource.nodes):
             job_index = self.resource_map[node_index, 0]
-            if job_index != -1:  # ジョブが割り当てられている場合
+            if (
+                node.state == NodeState.IDLE and job_index != -1
+            ):  # ジョブが割り当てられている場合
                 job = jobs[job_index]
-                node.job_index = job_index
-                node.remaining_time = job.pred_time
+                node.allocate_job(job)
