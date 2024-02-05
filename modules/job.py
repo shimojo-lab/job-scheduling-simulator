@@ -37,7 +37,7 @@ class Workload:
             )
         return jobs
 
-    def show_avg_wall_time(self):
+    def get_avg_wall_time(self):
         # is_backfilledでないかつqueued_timestepとstart_timestepが設定されているジョブのみを抽出
         fcfs_jobs = [
             job
@@ -50,6 +50,10 @@ class Workload:
         fcfs_diff = [job.start_timestep - job.queued_timestep for job in fcfs_jobs]  # type: ignore
         avg_wall_time = np.mean(fcfs_diff) * self.timestep_seconds  # type: ignore
         return avg_wall_time
+
+    def get_backfill_ratio(self):
+        backfill_jobs = [job for job in self.jobs if job.is_backfilled]
+        return len(backfill_jobs) / len(self.jobs)
 
 
 class Job:

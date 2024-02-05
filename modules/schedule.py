@@ -113,6 +113,7 @@ class Schedule:
                 raise ValueError(
                     f"Job {job.job_index} is too large to fit in the schedule"
                 )
+
             # Find the earliest timestep where this job can start
             start_timestep = self._find_earliest_start_time(job)
             if start_timestep is None:
@@ -183,7 +184,7 @@ class Schedule:
 
             # 指定された期間にわたって、必要なノード数が連続して利用可能かチェック
             consecutive_available = True
-            for dt in range(1, job_pred_timesteps):
+            for dt in range(job_pred_timesteps):
                 if not all(self.resource_map[available_nodes, t + dt] == -1):
                     consecutive_available = False
                     break
@@ -220,6 +221,7 @@ class Schedule:
         else:
             # 必要なノード数を満たすまでに利用可能なノードが見つからなかった場合の処理
             # この場合、ジョブはスケジュールされないか、異なるアプローチが必要
+            print(job)
             print(f"Error: Unable to allocate sufficient nodes for job {job.job_index}")
 
     def _allocate_resources(self, resource: Resource, jobs: List[Job]):
