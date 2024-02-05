@@ -3,12 +3,12 @@ from modules.simulator import Simulator
 
 DEBUG = False
 
-NODE_SIZE = 520
-SCHEDULE_TIMESTEP_WINDOW = 1440
-BACKFILL_TIMESTEP_WINDOW = 720
-WATCH_JOB_SIZE = 100
+NODE_SIZE = 1000
+SCHEDULE_TIMESTEP_WINDOW = 2880
+BACKFILL_TIMESTEP_WINDOW = 1440
+WATCH_JOB_SIZE = 300
 TIMESTEP_SECONDS = 60
-SAMPLE_SIZE = 1000
+SAMPLE_SIZE = 100000
 
 if DEBUG:
     NODE_SIZE = 10
@@ -41,10 +41,10 @@ data_list = [
         "name": "jobs-last2",
         "path": "data/jobs-last2.parquet",
     },
-    # {
-    #     "name": "jobs-user-estimation",
-    #     "path": "data/jobs-user-estimation.parquet",
-    # },
+    {
+        "name": "jobs-user-estimation",
+        "path": "data/jobs-user-estimation.parquet",
+    },
 ]
 
 df_list = [pd.read_parquet(data["path"]) for data in data_list]
