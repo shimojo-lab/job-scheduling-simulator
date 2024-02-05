@@ -30,6 +30,8 @@ class Schedule:
     def create_initial_schedule(
         self, job_queue: JobQueue, resource: Resource, jobs: List[Job]
     ):
+        # キューに入ったタイムステップを設定
+        job_queue.set_queued_timestep(self.timestep, self.watch_job_size)
         # FCFS scheduling
         self._schedule_fcfs(job_queue, resource)
         # Backfill scheduling
@@ -37,10 +39,15 @@ class Schedule:
         # Allocate resources
         self._allocate_resources(resource, jobs)
 
-    def proceed_timestep(self, resource: Resource, jobs: List[Job]):
+    def proceed_timestep(
+        self, job_queue: JobQueue, resource: Resource, jobs: List[Job]
+    ):
         """タイムステップを1進め、実行中のジョブの状態を更新する"""
         # 現在のタイムステップを1つ進める
         self.timestep += 1
+
+        # キューに入ったタイムステップを設定
+        job_queue.set_queued_timestep(self.timestep, self.watch_job_size)
 
         resource.proceed_timestep()
         completed_jobs = resource.get_completed_jobs()
@@ -53,18 +60,19 @@ class Schedule:
 
         # 実行中かつリソースマップ上で残り時間のあるジョブについて、残り時間をリソースマップ上で更新
         for job in running_jobs:
-            scheduled_remaining_timesstep = job.allocated_nodes[
+            scheduled_remaining_timestep = job.allocated_nodes[
                 0
-            ].scheduled_remaining_timesstep
+            ].scheduled_remaining_timestep
+            if scheduled_remaining_timestep == 0:
+                continue
             self.resource_map[
-                job.allocated_node_indecies, scheduled_remaining_timesstep
+                job.allocated_node_indecies, scheduled_remaining_timestep
             ] = -1
             job.occupied_range[1] -= 1
 
-        # jobs_in_scheduleにをjob.occupied_range[0]が小さい順に並び替え
-        self.jobs_in_schedule.sort(key=lambda x: x.occupied_range[0])
-
         # リソースマップ上で待機しているジョブについて、前詰めスケジューリングを行う
+        # jobs_in_scheduleをリソースマップ上の早い順に並び替え
+        self.jobs_in_schedule.sort(key=lambda x: x.occupied_range[0])
         for job in self.jobs_in_schedule:
             start, end = job.occupied_range
             if start == 0:
@@ -80,13 +88,26 @@ class Schedule:
             self.resource_map[job.allocated_node_indecies, start:end] = job.job_index
             job.occupied_range = [start, end]
 
+        # スケジュール
+        self._schedule_fcfs(job_queue, resource)
+        self._backfill(job_queue, resource)
+
         # アイドル中のノードについて、リソースマップ上の先頭のジョブを割り当てる
         self._allocate_resources(resource, jobs)
 
     def _schedule_fcfs(self, job_queue, resource):
         """Implement FCFS scheduling."""
         jobs_to_remove = []
-        for job in job_queue.queue:
+        # job_queueの先頭からwatch_job_size分のジョブしか見えていない想定
+        for job in list(job_queue.queue)[: self.watch_job_size]:
+            # 割り当て不可能なジョブが現れたらエラーを投げる
+            if (
+                job.node_size > self.node_size
+                or job.timestep_length > self.timestep_window
+            ):
+                raise ValueError(
+                    f"Job {job.job_index} is too large to fit in the schedule"
+                )
             # Find the earliest timestep where this job can start
             start_timestep = self._find_earliest_start_time(job)
             if start_timestep is None:
@@ -94,7 +115,7 @@ class Schedule:
                 break
             else:
                 self._assign_job(job, start_timestep, resource)
-                job.scheduled_timestep = start_timestep
+                job.scheduled_timestep = self.timestep + start_timestep
                 job.is_backfilled = False
                 job.occupied_range = [
                     start_timestep,
@@ -110,14 +131,15 @@ class Schedule:
     def _backfill(self, job_queue: JobQueue, resource: Resource):
         """Implement backfill scheduling."""
         # FCFSスケジューリングで割り当てられなかったジョブを探す
+        # バックフィル対象はjob_queueの先頭からwatch_job_size分
         for job in list(job_queue.queue)[: self.watch_job_size]:
-            # バックフィルで利用可能なスペースを探す
+            # バックフィルウィンドウの範囲でバックフィルで利用可能なスペースを探す
             for t in range(self.backfill_timestep_window):
                 # このタイムステップでジョブが実行可能かどうかを確認
                 if self._can_fit_job_in_timeslot(job, t):
                     # ジョブをスケジュールに割り当てる
                     self._assign_job(job, t, resource)
-                    job.scheduled_timestep = t
+                    job.scheduled_timestep = self.timestep + t
                     job.is_backfilled = True
                     job.occupied_range = [t, t + job.timestep_length]
                     self.jobs_in_schedule.append(job)

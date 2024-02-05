@@ -9,6 +9,9 @@ class Workload:
 
     def print_jobs(self):
         print("*** Jobs ***")
+        print(
+            "job_index\tlog_id\tpred_time\treal_time\tnode_size\tqueued_timestep\tscheduled_timestep\tis_backfilled\tallocated_node_indecies\toccupied_range"
+        )
         for job in self.jobs:
             print(job)
 
@@ -58,4 +61,8 @@ class Job:
         self.occupied_range = [0, 0]
 
     def __repr__(self):
-        return f"Job {self.job_index}: {self.log_id} - {self.pred_time} - {self.real_time} - {self.node_size} - {self.scheduled_timestep} - {self.is_backfilled} - {self.allocated_node_indecies} - {self.occupied_range}"
+        return f"{self.job_index}\t{self.log_id}\t{self.pred_time}\t\t{self.real_time}\t\t{self.node_size}\t\t{self.queued_timestep}\t\t{self.scheduled_timestep}\t\t\t{self.is_backfilled}\t\t{self.allocated_node_indecies}\t{self.occupied_range}"
+
+    def set_queued_timestep(self, timestep: int):
+        if self.queued_timestep is None:
+            self.queued_timestep = timestep

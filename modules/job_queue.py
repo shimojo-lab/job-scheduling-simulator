@@ -27,3 +27,7 @@ class JobQueue:
 
     def is_empty(self) -> bool:
         return len(self.queue) == 0
+
+    def set_queued_timestep(self, timestep: int, watch_job_size: int):
+        for job in list(self.queue)[:watch_job_size]:
+            job.set_queued_timestep(timestep)
