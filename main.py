@@ -6,20 +6,22 @@ from modules.resource import Resource
 from modules.schedule import Schedule
 
 DEBUG = True
-# NODE_SIZE = 10
-# SCHEDULE_TIMESTEP_WINDOW = 40
-# BACKFILL_TIMESTEP_WINDOW = 30
-# WATCH_JOB_SIZE = 5
-# TIMESTEP_SECONDS = 60
 
 NODE_SIZE = 1520
 SCHEDULE_TIMESTEP_WINDOW = 1440
 BACKFILL_TIMESTEP_WINDOW = 720
 WATCH_JOB_SIZE = 100
 TIMESTEP_SECONDS = 60
+SAMPLE_SIZE = 10000
 
 data = pd.read_parquet("data/jobs-previous-method.parquet")
+data = data.sample(SAMPLE_SIZE, random_state=1028)
 if DEBUG:
+    NODE_SIZE = 10
+    SCHEDULE_TIMESTEP_WINDOW = 40
+    BACKFILL_TIMESTEP_WINDOW = 30
+    WATCH_JOB_SIZE = 5
+    TIMESTEP_SECONDS = 60
     data = data[:1000]
     # data = pd.DataFrame(
     #     {
@@ -76,3 +78,4 @@ print(f"Timestep window: {SCHEDULE_TIMESTEP_WINDOW}")
 print(f"Backfill window: {BACKFILL_TIMESTEP_WINDOW}")
 print(f"Watch job size: {WATCH_JOB_SIZE}")
 print(f"Timestep seconds: {TIMESTEP_SECONDS}")
+print(f"Sample size: {SAMPLE_SIZE}")
