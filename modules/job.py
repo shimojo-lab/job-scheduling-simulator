@@ -6,11 +6,12 @@ from typing import List
 class Workload:
     def __init__(self, data: pd.DataFrame, timestep_seconds: int):
         self.jobs = self.from_dataframe(data, timestep_seconds)
+        self.timestep_seconds = timestep_seconds
 
     def print_jobs(self):
         print("*** Jobs ***")
         print(
-            "job_index\tlog_id\tpred_time\treal_time\tnode_size\tqueued_timestep\tscheduled_timestep\tis_backfilled\tallocated_node_indecies\toccupied_range"
+            "job_index\tlog_id\tpred_time\treal_time\tnode_size\tqueued_timestep\tstart_timestep\tis_backfilled\tallocated_node_indecies\toccupied_range"
         )
         for job in self.jobs:
             print(job)
@@ -36,6 +37,20 @@ class Workload:
             )
         return jobs
 
+    def show_avg_wall_time(self):
+        # is_backfilledでないかつqueued_timestepとstart_timestepが設定されているジョブのみを抽出
+        fcfs_jobs = [
+            job
+            for job in self.jobs
+            if not job.is_backfilled
+            and job.queued_timestep is not None
+            and job.start_timestep is not None
+        ]
+        # queued_timestepとstart_timestepの差の平均を計算
+        fcfs_diff = [job.start_timestep - job.queued_timestep for job in fcfs_jobs]  # type: ignore
+        avg_wall_time = np.mean(fcfs_diff) * self.timestep_seconds  # type: ignore
+        return avg_wall_time
+
 
 class Job:
     def __init__(
@@ -53,7 +68,7 @@ class Job:
         self.real_time = real_time
         self.node_size = node_size
         self.queued_timestep: int | None = None
-        self.scheduled_timestep: int | None = None
+        self.start_timestep: int | None = None
         self.is_backfilled = False
         self.allocated_nodes = []
         self.allocated_node_indecies = []
@@ -61,7 +76,7 @@ class Job:
         self.occupied_range = [0, 0]
 
     def __repr__(self):
-        return f"{self.job_index}\t{self.log_id}\t{self.pred_time}\t\t{self.real_time}\t\t{self.node_size}\t\t{self.queued_timestep}\t\t{self.scheduled_timestep}\t\t\t{self.is_backfilled}\t\t{self.allocated_node_indecies}\t{self.occupied_range}"
+        return f"{self.job_index}\t{self.log_id}\t{self.pred_time}\t\t{self.real_time}\t\t{self.node_size}\t\t{self.queued_timestep}\t\t{self.start_timestep}\t\t{self.is_backfilled}\t\t{self.allocated_node_indecies}\t{self.occupied_range}"
 
     def set_queued_timestep(self, timestep: int):
         if self.queued_timestep is None:

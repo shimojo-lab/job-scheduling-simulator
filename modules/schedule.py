@@ -27,6 +27,9 @@ class Schedule:
         print("*** Schedule ***")
         print(self.resource_map)
 
+    def total_time(self):
+        return self.timestep * self.timestep_seconds
+
     def create_initial_schedule(
         self, job_queue: JobQueue, resource: Resource, jobs: List[Job]
     ):
@@ -37,7 +40,8 @@ class Schedule:
         # Backfill scheduling
         self._backfill(job_queue, resource)
         # Allocate resources
-        self._allocate_resources(resource, jobs)
+        allocated_job_count = self._allocate_resources(resource, jobs)
+        return allocated_job_count
 
     def proceed_timestep(
         self, job_queue: JobQueue, resource: Resource, jobs: List[Job]
@@ -93,7 +97,8 @@ class Schedule:
         self._backfill(job_queue, resource)
 
         # アイドル中のノードについて、リソースマップ上の先頭のジョブを割り当てる
-        self._allocate_resources(resource, jobs)
+        allocated_job_count = self._allocate_resources(resource, jobs)
+        return allocated_job_count
 
     def _schedule_fcfs(self, job_queue, resource):
         """Implement FCFS scheduling."""
@@ -115,7 +120,6 @@ class Schedule:
                 break
             else:
                 self._assign_job(job, start_timestep, resource)
-                job.scheduled_timestep = self.timestep + start_timestep
                 job.is_backfilled = False
                 job.occupied_range = [
                     start_timestep,
@@ -139,7 +143,6 @@ class Schedule:
                 if self._can_fit_job_in_timeslot(job, t):
                     # ジョブをスケジュールに割り当てる
                     self._assign_job(job, t, resource)
-                    job.scheduled_timestep = self.timestep + t
                     job.is_backfilled = True
                     job.occupied_range = [t, t + job.timestep_length]
                     self.jobs_in_schedule.append(job)
@@ -221,10 +224,14 @@ class Schedule:
 
     def _allocate_resources(self, resource: Resource, jobs: List[Job]):
         """リソースマップの先頭のジョブをリソースに割り当てる"""
+        allocated_job_indecies = set()
         for node_index, node in enumerate(resource.nodes):
             job_index = self.resource_map[node_index, 0]
             if (
                 node.state == NodeState.IDLE and job_index != -1
-            ):  # ジョブが割り当てられている場合
+            ):  # スケジュールにジョブが割り当てられている場合
                 job = jobs[job_index]
                 node.allocate_job(job)
+                job.start_timestep = self.timestep
+                allocated_job_indecies.add(job_index)
+        return len(allocated_job_indecies)
