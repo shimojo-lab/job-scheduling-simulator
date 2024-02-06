@@ -1,3 +1,4 @@
+import numpy as np
 from tqdm import tqdm
 import sys
 from pathlib import Path
@@ -35,22 +36,29 @@ class Simulator:
         )
         self.resource = Resource(node_size=NODE_SIZE, timestep_seconds=TIMESTEP_SECONDS)
 
-    def run(self):
-        progress_bar = tqdm(total=len(self.workload.jobs))
+    def run(self, exp, method):
+        with open(f'exp{exp}-method{method}-progress.txt', 'w') as f:
+            pbar = tqdm(total=len(self.workload.jobs), file=f)
 
-        # Create initial schedule
-        allocated_job_count = self.schedule.create_initial_schedule(
-            self.job_queue, self.resource, self.workload.jobs
-        )
-        progress_bar.update(allocated_job_count)
-
-        while not self.job_queue.is_empty() or self.resource.is_running():
-            allocated_job_count = self.schedule.proceed_timestep(
+            # Create initial schedule
+            allocated_job_count = self.schedule.create_initial_schedule(
                 self.job_queue, self.resource, self.workload.jobs
             )
-            progress_bar.update(allocated_job_count)
+            pbar.update(allocated_job_count)
+            f.flush()
 
-        progress_bar.close()
+            last_showed_progress = 0
+            while not self.job_queue.is_empty() or self.resource.is_running():
+                allocated_job_count = self.schedule.proceed_timestep(
+                    self.job_queue, self.resource, self.workload.jobs
+                )
+                pbar.update(allocated_job_count)
+                progress = np.ceil(pbar.n / pbar.total * 100)
+                if progress - last_showed_progress >= 1:
+                    f.flush()
+                    last_showed_progress = progress
+
+            pbar.close()
 
         # Show statics
         total_time = self.schedule.total_time()

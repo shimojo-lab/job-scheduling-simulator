@@ -131,3 +131,7 @@ dmypy.json
 # data
 src/runtime_estimated_data/mocked_job_data.csv
 *.parquet
+
+# SQUID Logs
+*.sh.e*
+*.sh.o*
